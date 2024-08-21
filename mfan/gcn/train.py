@@ -31,7 +31,7 @@ parser.add_argument('--hidden', type=int, default=16,
                     help='Number of hidden units.')
 parser.add_argument('--dropout', type=float, default=0.5,
                     help='Dropout rate (1 - keep probability).')
-parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki'],
+parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki', 'pubmed'],
                     help='Graph dataset.')
 parser.add_argument('--save_model', type=bool, default=False,
                     help='Whether to save model.')
@@ -45,7 +45,7 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 # Load data
-if args.dataset == 'cora' or args.dataset == 'citeseer':
+if args.dataset == 'cora' or args.dataset == 'citeseer' or args.dataset == 'pubmed':
     adj, features, labels, idx_train, idx_val, idx_test = load_data(args.dataset, '../data')
 else:
     adj, features, labels, idx_train, idx_val, idx_test = load_data2(args.dataset)

@@ -18,20 +18,23 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # noinspection PyPep8Naming
 class MFAN:
-    def __init__(self, model: GCN, dataset: str, A: torch.Tensor, X: torch.Tensor, K: int, xi: int):
+    def __init__(self, model: GCN, dataset: str, A: torch.Tensor, X: torch.Tensor, K: int, xi: int, sparse: bool):
         self.model = model
+        self.A_dense = A
         self.A = A
+        if sparse:
+            self.A = A.to_sparse()
         self.X = X
+        self.sparse = sparse
         self.K = K
         self.xi = xi
 
         self.N = A.shape[0]
 
-        self.A_n = normalize_symmetric(self.A + torch.eye(self.N, device=device))
+        self.A_n = normalize_symmetric(self.A_dense + torch.eye(self.N, device=device))
         self.X_n = normalize_row(self.X, check_zero=True)
-        self.Y = model(self.X_n, normalize_symmetric(self.A + torch.eye(self.N, device=device))).argmax(dim=1)
-        self.Y2 = model(self.X_n, normalize_row(self.A + torch.eye(self.N, device=device))).argmax(dim=1)
-
+        self.Y = model(self.X_n, normalize_symmetric(self.A_dense + torch.eye(self.N, device=device))).argmax(dim=1)
+        self.Y2 = model(self.X_n, normalize_row(self.A_dense + torch.eye(self.N, device=device))).argmax(dim=1)
         self.P = None
         self.g = None
         self.P_best = None
@@ -225,7 +228,7 @@ class MFAN:
 
             p = P_binary[:, torch.argmax(w).item()]
 
-            A_p = self.perturb(self.A, i, p)
+            A_p = self.perturb(self.A_dense, i, p)
 
             A_p = normalize_symmetric(A_p + torch.eye(self.N, device=device))
 
@@ -245,11 +248,16 @@ class MFAN:
             for k in range(self.K):
                 p = self.P[:, k]
 
-                A_p = self.perturb(self.A, i, p)
+                if not self.sparse:
+                    A_p = self.perturb(self.A, i, p)
 
-                A_p = normalize_row(A_p + torch.eye(self.N, device=device))
+                    A_p = normalize_row(A_p + torch.eye(self.N, device=device)).to_dense()
+                else:
+                    A_p = self.perturb_sparse(self.A, i, p)
 
-                Y_p = self.model(self.X_n, A_p)
+                    A_p = normalize_row(A_p + torch.eye(self.N, device=device).to_sparse())
+
+                Y_p = self.model(self.X_n, A_p, self.sparse)
 
                 u = self.utility(Y_p[i], self.Y2[i])
 
@@ -299,6 +307,28 @@ class MFAN:
         P[:, i] = p
 
         A_p = (ONES - P) * A + P * (ONES_0 - A)
+
+        return A_p
+
+    @staticmethod
+    def perturb_sparse(A: torch.Tensor, i: int, p: torch.Tensor) -> torch.Tensor:
+        N = A.size()[0]
+
+        indices = []
+        for j in range(N):
+            if i != j:
+                indices.append([i, j])
+        for j in range(N):
+            if i != j:
+                indices.append([j, i])
+        indices.append([i, i])
+
+        ONES = torch.sparse_coo_tensor(list(zip(*indices)), torch.ones((2 * N - 1)), size=(N, N), device=device)
+        ONES_0 = torch.sparse_coo_tensor(list(zip(*indices[: -1])), torch.ones((2 * N - 2)), size=(N, N), device=device)
+
+        P = torch.sparse_coo_tensor(list(zip(*indices)), torch.concat([p[:i], p[i + 1:], p[:i], p[i + 1:], p[i].view(1)]), size=(N, N), device=device)
+
+        A_p = (ONES - P) * A + P * (ONES_0 - A) + A - ONES * A
 
         return A_p
 

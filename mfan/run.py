@@ -20,8 +20,9 @@ parser.add_argument('--hidden', type=int, default=16,
                     help='Number of hidden units.')
 parser.add_argument('--dropout', type=float, default=0.5,
                     help='Dropout rate (1 - keep probability).')
-parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki'],
+parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki', 'pubmed'],
                     help='Graph dataset.')
+parser.add_argument('--sparse', type=bool, default=False, help='whether to use sparse tensors.')
 parser.add_argument('--K', type=int, default=2)
 parser.add_argument('--xi', type=int, default=10)
 
@@ -34,7 +35,7 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 
-if args.dataset == 'cora' or args.dataset == 'citeseer':
+if args.dataset == 'cora' or args.dataset == 'citeseer' or args.dataset == 'pubmed':
     adj, features, labels, idx_train, idx_val, idx_test = load_data(args.dataset, 'data')
 else:
     adj, features, labels, idx_train, idx_val, idx_test = load_data2(args.dataset)
@@ -135,7 +136,7 @@ def main():
         indices_train = indices[trial * (N // trials): trial * (N // trials) + (N // trials)]
         indices_test = list(np.setdiff1d(indices, indices_train))
 
-        mfan = MFAN(victim, args.dataset, A, X, K, xi)
+        mfan = MFAN(victim, args.dataset, A, X, K, xi, args.sparse)
         mfan.train(indices_train)
 
         with open(f'saved-models/model_dataset={dataset}_K={K}_xi={xi}_trial={trial + 1}.pickle', 'wb') as file_model:

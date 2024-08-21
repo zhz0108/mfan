@@ -18,7 +18,7 @@ from utils import load_indices, normalize_symmetric, normalize_row, load_data, l
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--seed', type=int, default=0, help='Random seed')
-parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki'], help='Graph dataset.')
+parser.add_argument('--dataset', type=str, default='cora', choices=['cora', 'citeseer', 'facebook', 'wiki', 'pubmed'], help='Graph dataset.')
 parser.add_argument('--K', type=int, default=2)
 parser.add_argument('--xi', type=int, default=10)
 
@@ -31,7 +31,7 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
 
-if args.dataset == 'cora' or args.dataset == 'citeseer':
+if args.dataset == 'cora' or args.dataset == 'citeseer' or args.dataset == 'pubmed':
     adj, features, labels, idx_train, idx_val, idx_test = load_data(args.dataset, 'data')
 else:
     adj, features, labels, idx_train, idx_val, idx_test = load_data2(args.dataset)

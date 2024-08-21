@@ -64,14 +64,22 @@ def normalize_symmetric(A: torch.Tensor, check_zero: bool = False) -> torch.Tens
 
 # noinspection PyPep8Naming
 def normalize_row(A: torch.Tensor, check_zero: bool = False) -> torch.Tensor:
-    D = torch.sum(A, dim=1, keepdim=True)
+    if not A.is_sparse:
+        D = torch.sum(A, dim=1, keepdim=True)
 
-    if check_zero:
-        for i in range(A.size()[0]):
-            if D[i, 0] == 0:
-                D[i, 0] = 1
+        if check_zero:
+            for i in range(A.size()[0]):
+                if D[i, 0] == 0:
+                    D[i, 0] = 1
 
-    return A / D
+        return A / D
+    else:
+        D = torch.sparse.sum(A, dim=1).to_dense()
+
+        D_inv = 1 / D
+        D_inv = torch.sparse_coo_tensor(A.coalesce().indices(), D_inv[A.coalesce().indices()[0, :]], size=A.size(), device=A.device)
+
+        return A * D_inv
 
 
 def load_data(dataset_str, root):

@@ -27,9 +27,12 @@ class GraphConvolution(Module):
         if self.bias is not None:
             self.bias.data.uniform_(-stdv, stdv)
 
-    def forward(self, input, adj):
+    def forward(self, input, adj, sparse):
         support = torch.mm(input, self.weight)
-        output = torch.mm(adj, support)
+        if not sparse:
+            output = torch.mm(adj, support)
+        else:
+            output = torch.sparse.mm(adj, support)
         if self.bias is not None:
             return output + self.bias
         else:
